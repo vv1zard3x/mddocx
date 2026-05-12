@@ -286,9 +286,14 @@ class DocBuilder:
     # ----- block builders ----- #
 
     def _add_heading(self, level: int, inline_tokens: Sequence[Token]) -> None:
+        # H1 keeps its centered style (no indent); H2..H6 inherit 1.25 cm
+        # first-line indent and pStyle-bound numbering from the heading
+        # style configured in ``_styles.apply_gost_styles``. Touching
+        # ``first_line_indent`` directly here would override the
+        # abstractNum's <w:ind>, breaking auto-number placement — let the
+        # style/numbering chain do its job.
         level = max(1, min(level, 9))
         p = self.doc.add_paragraph(style=f"Heading {level}")
-        p.paragraph_format.first_line_indent = Cm(0)
         self._render_inline(p, inline_tokens)
 
     def _add_paragraph(self, inline_tokens: Sequence[Token]) -> None:

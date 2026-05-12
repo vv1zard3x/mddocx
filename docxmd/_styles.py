@@ -18,6 +18,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt, RGBColor
 
+from ._numbering import HEADING_NUM_ID
+
 TNR: Final = "Times New Roman"
 MONO: Final = "Courier New"
 
@@ -70,17 +72,31 @@ def apply_gost_styles(doc: _Doc) -> None:
     pf.space_before = Pt(0)
     pf.space_after = Pt(0)
 
+    # H1 == GOST 7.32 "структурный элемент" (РЕФЕРАТ, СОДЕРЖАНИЕ, ВВЕДЕНИЕ,
+    # ЗАКЛЮЧЕНИЕ, СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ, ПРИЛОЖЕНИЕ): centered,
+    # capitalised via w:caps so the markdown text can stay in normal case,
+    # bold, no period, never numbered. The document title proper belongs on
+    # a Word title page, outside the markdown contract.
     h1 = styles["Heading 1"]
     _set_font(h1, TNR, size_pt=H1_SIZE_PT, bold=True, color=RGBColor(0, 0, 0))
     pf = h1.paragraph_format
     pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
     pf.line_spacing = LINE_SPACING
     pf.first_line_indent = Cm(0)
+    pf.left_indent = Cm(0)
     pf.space_before = Pt(18)
-    pf.space_after = Pt(12)
+    pf.space_after = Pt(18)
     pf.keep_with_next = True
+    pf.keep_together = True
     pf.page_break_before = False
+    _set_run_caps(h1)
+    _clear_run_underline(h1)
 
+    # H2..H6 — section / subsection headings per GOST 7.32 §6.3.3: printed
+    # "с абзацного отступа" (1.25 cm first-line indent), bold, sentence case,
+    # no underline, no period. Auto-numbered through the heading abstract
+    # bound by pStyle; we also set numPr here so the link survives renderers
+    # that ignore the abstract-side pStyle binding.
     for level in range(2, 10):
         try:
             h = styles[f"Heading {level}"]
@@ -97,10 +113,15 @@ def apply_gost_styles(doc: _Doc) -> None:
         pf = h.paragraph_format
         pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
         pf.line_spacing = LINE_SPACING
-        pf.first_line_indent = Cm(0)
+        pf.first_line_indent = Cm(FIRST_LINE_INDENT_CM)
+        pf.left_indent = Cm(0)
         pf.space_before = Pt(12)
         pf.space_after = Pt(6)
         pf.keep_with_next = True
+        pf.keep_together = True
+        _clear_run_underline(h)
+        if 2 <= level <= 6:
+            _bind_style_to_numbering(h, num_id=HEADING_NUM_ID, ilvl=level - 2)
 
     quote = _get_or_create_style(doc, "Quote", WD_STYLE_TYPE.PARAGRAPH)
     _set_font(quote, TNR, size_pt=BODY_SIZE_PT, italic=True)
@@ -240,6 +261,56 @@ def _set_font(
                 key = qn(theme_attr)
                 if key in color_el.attrib:
                     del color_el.attrib[key]
+
+
+def _set_run_caps(style) -> None:
+    """Force Word/LibreOffice to render text in uppercase via run properties.
+
+    Lets the markdown source keep "Введение" while the rendered docx shows
+    "ВВЕДЕНИЕ" — GOST 7.32 §6.3.3 mandates uppercase for structural section
+    headings, but only at the display level.
+    """
+
+    rpr = style.element.get_or_add_rPr()
+    existing = rpr.find(qn("w:caps"))
+    if existing is None:
+        caps = OxmlElement("w:caps")
+        caps.set(qn("w:val"), "1")
+        rpr.append(caps)
+
+
+def _clear_run_underline(style) -> None:
+    """Explicitly disable underline on a style (GOST: headings must not be underlined)."""
+
+    rpr = style.element.get_or_add_rPr()
+    existing = rpr.find(qn("w:u"))
+    if existing is None:
+        u = OxmlElement("w:u")
+        u.set(qn("w:val"), "none")
+        rpr.append(u)
+    else:
+        existing.set(qn("w:val"), "none")
+
+
+def _bind_style_to_numbering(style, *, num_id: int, ilvl: int) -> None:
+    """Attach ``<w:numPr>`` to a paragraph style so paragraphs using it inherit numbering.
+
+    Belt-and-braces alongside the abstract-side ``<w:pStyle>`` binding —
+    some renderers honor one but not the other.
+    """
+
+    pPr = style.element.get_or_add_pPr()
+    existing = pPr.find(qn("w:numPr"))
+    if existing is not None:
+        pPr.remove(existing)
+    num_pr = OxmlElement("w:numPr")
+    ilvl_el = OxmlElement("w:ilvl")
+    ilvl_el.set(qn("w:val"), str(ilvl))
+    num_pr.append(ilvl_el)
+    num_id_el = OxmlElement("w:numId")
+    num_id_el.set(qn("w:val"), str(num_id))
+    num_pr.append(num_id_el)
+    pPr.insert(0, num_pr)
 
 
 def _set_style_shading(style, fill_hex: str) -> None:

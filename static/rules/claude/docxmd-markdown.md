@@ -5,9 +5,12 @@ Use this contract when producing markdown that will be converted to a GOST-forma
 One `.md` file per document. Images go in `media/`. Image paths in the markdown are relative to the folder containing the `.md`.
 
 ## Headings
-- `#` document title, exactly one per file.
-- `##`, `###`, ... for sections.
-- Never include section numbers in the heading text. The converter does not number headings.
+- `#` (H1) marks a GOST 7.32 structural section: `Введение`, `Заключение`, `Список использованных источников`, `Приложение А`, `Реферат`, `Содержание`. Rendered centered in UPPERCASE, never numbered. Multiple H1s per file are allowed.
+- The document title proper is not written in markdown — it lives on the Word title page.
+- `##` (H2) marks a numbered top-level section. The converter prefixes it automatically: `1`, `2`, `3`, ... across the document. Structural H1s do not reset this counter.
+- `###`..`######` are nested subsections; auto-prefixed as `1.1`, `1.1.1`, `1.1.1.1`, ... Cascade restart happens automatically when a higher level appears.
+- Never type section numbers inside the heading text — Word numbers headings itself. Manual prefixes will produce double numbering.
+- Do not skip heading levels (`##` followed directly by `####` without `###`).
 
 ## Paragraphs
 - One blank line between paragraphs.
