@@ -3,15 +3,13 @@
 # Assumes Traefik:
 #   - is already running on this host with Docker provider enabled,
 #   - exposes entrypoint `websecure` (HTTPS) and a cert resolver named `le`,
-#   - is attached to an external Docker network (named `traefik` below —
-#     change to whatever your Traefik uses).
+#   - is attached to the external Docker network `proxy`.
 #
 # Before first run:
 #   1. Point an A-record from example.com to this host.
 #   2. Replace `example.com` below.
-#   3. Adjust the external network name if your Traefik uses a different one.
-#   4. Adjust `traefik.http.routers.mddocx.tls.certresolver=<name>` to match
-#      the cert resolver name configured in your Traefik.
+#   3. Adjust `traefik.http.routers.mddocx.tls.certresolver=<name>` to match
+#      the cert resolver name configured in your Traefik (default here: `le`).
 #
 #   docker compose up -d --build
 
@@ -23,10 +21,10 @@ services:
     expose:
       - "8000"
     networks:
-      - traefik
+      - proxy
     labels:
       - traefik.enable=true
-      - traefik.docker.network=traefik
+      - traefik.docker.network=proxy
       - traefik.http.routers.mddocx.rule=Host(`example.com`)
       - traefik.http.routers.mddocx.entrypoints=websecure
       - traefik.http.routers.mddocx.tls=true
@@ -34,5 +32,5 @@ services:
       - traefik.http.services.mddocx.loadbalancer.server.port=8000
 
 networks:
-  traefik:
+  proxy:
     external: true
