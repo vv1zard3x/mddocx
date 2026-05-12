@@ -12,6 +12,7 @@ relies on. Anything outside that contract is best-effort.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -28,6 +29,13 @@ from docx.text.paragraph import Paragraph
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
+from ._numbering import (
+    BULLET_NUM_ID,
+    ListContext,
+    allocate_ordered_num_id,
+    apply_numbering,
+    install_numbering,
+)
 from ._styles import (
     CODE_SHADING_HEX,
     FIRST_LINE_INDENT_CM,
@@ -38,6 +46,13 @@ from ._styles import (
     set_paragraph_horizontal_rule,
     set_run_font,
     set_run_shading,
+)
+
+# Per GOST 7.32 captions use the EM DASH separator: "Рисунок 1 — Название".
+_CAPTION_SEPARATOR = "\u00a0\u2014\u00a0"  # NBSP + em dash + NBSP
+_TABLE_CAPTION_PREFIX_RE = re.compile(
+    r"^\s*табл(?:ица)?\s*[\.:\u2014\-]\s*",
+    re.IGNORECASE,
 )
 
 
@@ -87,6 +102,7 @@ def convert(src: Path | str, output: Path | str | None = None) -> Path:
 
     doc = Document()
     apply_gost_styles(doc)
+    install_numbering(doc)
     _strip_initial_empty_paragraph(doc)
 
     parser = (
@@ -137,8 +153,12 @@ class DocBuilder:
     doc: _Doc
     src_dir: Path
     image_counter: int = 0
-    _list_kinds: list[str] = field(default_factory=list)
+    table_counter: int = 0
+    _list_stack: list[ListContext] = field(default_factory=list)
     _quote_depth: int = 0
+    # Pending caption text and its original inline tokens, kept while we peek
+    # ahead one block to see whether a table follows.
+    _pending_table_caption: tuple[str, Sequence[Token]] | None = None
 
     # ----- public entry ----- #
 
@@ -149,6 +169,15 @@ class DocBuilder:
             t = tokens[i]
             tt = t.type
 
+            # Flush a pending table caption if the next block is not a table.
+            if (
+                self._pending_table_caption is not None
+                and tt != "table_open"
+            ):
+                _, fallback_inline = self._pending_table_caption
+                self._pending_table_caption = None
+                self._add_paragraph(fallback_inline)
+
             if tt == "heading_open":
                 level = int(t.tag[1:])
                 inline = tokens[i + 1]
@@ -158,21 +187,32 @@ class DocBuilder:
 
             if tt == "paragraph_open":
                 inline = tokens[i + 1]
-                self._add_paragraph(inline.children or [])
+                children = inline.children or []
+                # Detect "Таблица: <name>" paragraphs at the top level (not
+                # inside a list/quote) — they become the next table's caption.
+                if not self._list_stack and not self._quote_depth:
+                    plain = _collect_plain_text(children).strip()
+                    m = _TABLE_CAPTION_PREFIX_RE.match(plain)
+                    if m:
+                        title = plain[m.end():].strip().rstrip(".")
+                        self._pending_table_caption = (title, children)
+                        i += 3
+                        continue
+                self._add_paragraph(children)
                 i += 3
                 continue
 
             if tt == "bullet_list_open":
-                self._list_kinds.append("bullet")
+                self._push_list("bullet")
                 i += 1
                 continue
             if tt == "ordered_list_open":
-                self._list_kinds.append("ordered")
+                self._push_list("ordered")
                 i += 1
                 continue
             if tt in ("bullet_list_close", "ordered_list_close"):
-                if self._list_kinds:
-                    self._list_kinds.pop()
+                if self._list_stack:
+                    self._list_stack.pop()
                 i += 1
                 continue
 
@@ -201,6 +241,10 @@ class DocBuilder:
                 continue
 
             if tt == "table_open":
+                if self._pending_table_caption is not None:
+                    title, _ = self._pending_table_caption
+                    self._pending_table_caption = None
+                    self._add_table_caption(title)
                 i = self._add_table(tokens, i)
                 continue
 
@@ -211,6 +255,34 @@ class DocBuilder:
 
             i += 1
 
+        # End of document: a stray pending caption falls back to plain text.
+        if self._pending_table_caption is not None:
+            _, fallback_inline = self._pending_table_caption
+            self._pending_table_caption = None
+            self._add_paragraph(fallback_inline)
+
+    # ----- list bookkeeping ----- #
+
+    def _push_list(self, kind: str) -> None:
+        """Update the active-list stack, allocating numIds as needed.
+
+        A nested list of the same kind continues the parent's hierarchy
+        (same ``numId``, deeper ``ilvl``); switching kind (or starting a
+        top-level list) opens a fresh counter.
+        """
+
+        if self._list_stack and self._list_stack[-1].kind == kind:
+            parent = self._list_stack[-1]
+            self._list_stack.append(
+                ListContext(kind=kind, num_id=parent.num_id, ilvl=parent.ilvl + 1)
+            )
+            return
+        if kind == "bullet":
+            num_id = BULLET_NUM_ID
+        else:
+            num_id = allocate_ordered_num_id(self.doc)
+        self._list_stack.append(ListContext(kind=kind, num_id=num_id, ilvl=0))
+
     # ----- block builders ----- #
 
     def _add_heading(self, level: int, inline_tokens: Sequence[Token]) -> None:
@@ -220,19 +292,29 @@ class DocBuilder:
         self._render_inline(p, inline_tokens)
 
     def _add_paragraph(self, inline_tokens: Sequence[Token]) -> None:
-        if not self._list_kinds and not self._quote_depth and _is_standalone_image(
-            inline_tokens
+        if (
+            not self._list_stack
+            and not self._quote_depth
+            and _is_standalone_image(inline_tokens)
         ):
             self._add_image_with_caption(_find_image(inline_tokens))
             return
 
-        if self._list_kinds:
-            level = min(len(self._list_kinds), 3)
-            kind = self._list_kinds[-1]
-            base = "List Bullet" if kind == "bullet" else "List Number"
-            style_name = base if level == 1 else f"{base} {level}"
-            p = self.doc.add_paragraph(style=style_name)
-            p.paragraph_format.first_line_indent = Cm(0)
+        if self._list_stack:
+            ctx = self._list_stack[-1]
+            p = self.doc.add_paragraph()
+            apply_numbering(p, num_id=ctx.num_id, ilvl=ctx.ilvl)
+            # NB: do NOT touch first_line_indent / left_indent on list paras.
+            # Per OOXML resolution order numbering > style, so the level's
+            # <w:ind> from the abstractNum already overrides Normal's
+            # firstLine=1.25cm. Writing any direct <w:ind> here (even
+            # firstLine=0) causes renderers to replace the numbering's ind
+            # wholesale — newly typed items in Word then visibly use a
+            # different indent than the converted ones (the very symptom of
+            # "положение 1.1. совпадает с 1." reported during manual review).
+            # Also override Normal's "justify": list items read better
+            # ragged-right when the marker creates a visible hanging.
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
         elif self._quote_depth:
             p = self.doc.add_paragraph(style="Quote")
             indent_cm = 1.25 * self._quote_depth
@@ -241,6 +323,16 @@ class DocBuilder:
             p = self.doc.add_paragraph()
 
         self._render_inline(p, inline_tokens)
+
+    def _add_table_caption(self, title: str) -> None:
+        self.table_counter += 1
+        p = self.doc.add_paragraph(style="Table Caption")
+        p.paragraph_format.first_line_indent = Cm(0)
+        if title:
+            text = f"Таблица {self.table_counter}{_CAPTION_SEPARATOR}{title}"
+        else:
+            text = f"Таблица {self.table_counter}"
+        p.add_run(text)
 
     def _add_code_block(self, content: str) -> None:
         for line in content.split("\n"):
@@ -352,7 +444,7 @@ class DocBuilder:
 
         self.image_counter += 1
         caption_text = (
-            f"Рисунок {self.image_counter}. {alt}"
+            f"Рисунок {self.image_counter}{_CAPTION_SEPARATOR}{alt}"
             if alt
             else f"Рисунок {self.image_counter}"
         )
@@ -513,6 +605,24 @@ def _is_standalone_image(tokens: Iterable[Token]) -> bool:
         else:
             return False
     return saw_image
+
+
+def _collect_plain_text(tokens: Iterable[Token]) -> str:
+    """Recover the visible text of an inline token sequence.
+
+    Used to test paragraph contents against the table-caption convention
+    without committing to a Word paragraph first.
+    """
+
+    parts: list[str] = []
+    for t in tokens:
+        if t.type == "text":
+            parts.append(t.content)
+        elif t.type in ("softbreak", "hardbreak"):
+            parts.append(" ")
+        elif t.type == "code_inline":
+            parts.append(t.content)
+    return "".join(parts)
 
 
 def _find_image(tokens: Iterable[Token]) -> Token:

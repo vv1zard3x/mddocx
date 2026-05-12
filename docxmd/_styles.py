@@ -126,8 +126,17 @@ def apply_gost_styles(doc: _Doc) -> None:
     pf.space_after = Pt(6)
     _set_style_shading(code, CODE_SHADING_HEX)
 
+    # Figure caption: per GOST 7.32 — regular weight, regular style, plain text.
+    # Centered is customary in technical reports; GOST does not forbid it.
     caption = _get_or_create_style(doc, "Caption", WD_STYLE_TYPE.PARAGRAPH)
-    _set_font(caption, TNR, size_pt=BODY_SIZE_PT, bold=False, italic=True)
+    _set_font(
+        caption,
+        TNR,
+        size_pt=BODY_SIZE_PT,
+        bold=False,
+        italic=False,
+        color=RGBColor(0, 0, 0),
+    )
     pf = caption.paragraph_format
     pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
     pf.line_spacing = LINE_SPACING
@@ -136,13 +145,22 @@ def apply_gost_styles(doc: _Doc) -> None:
     pf.space_after = Pt(12)
     pf.keep_with_next = False
 
+    # Table caption: per GOST 7.32 § 6.6.3 — placed above the table, left
+    # aligned, no indent, regular weight & style ("Таблица N — Название").
     table_caption = _get_or_create_style(doc, "Table Caption", WD_STYLE_TYPE.PARAGRAPH)
-    _set_font(table_caption, TNR, size_pt=BODY_SIZE_PT, italic=False)
+    _set_font(
+        table_caption,
+        TNR,
+        size_pt=BODY_SIZE_PT,
+        bold=False,
+        italic=False,
+        color=RGBColor(0, 0, 0),
+    )
     pf = table_caption.paragraph_format
     pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
     pf.line_spacing = LINE_SPACING
     pf.first_line_indent = Cm(0)
-    pf.space_before = Pt(6)
+    pf.space_before = Pt(12)
     pf.space_after = Pt(3)
     pf.keep_with_next = True
 
@@ -187,7 +205,8 @@ def _set_font(
 
     python-docx only sets ``w:rFonts/@w:ascii`` when ``font.name`` is assigned,
     so Cyrillic falls back to the Word default unless we also touch
-    ``hAnsi``, ``cs`` and ``eastAsia``.
+    ``hAnsi``, ``cs`` and ``eastAsia``. Same trap exists for ``w:color``:
+    theme colors override explicit RGB unless wiped.
     """
 
     style.font.name = name
@@ -213,6 +232,14 @@ def _set_font(
             del rfonts.attrib[key]
     for attr in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
         rfonts.set(qn(attr), name)
+
+    if color is not None:
+        color_el = rpr.find(qn("w:color"))
+        if color_el is not None:
+            for theme_attr in ("w:themeColor", "w:themeTint", "w:themeShade"):
+                key = qn(theme_attr)
+                if key in color_el.attrib:
+                    del color_el.attrib[key]
 
 
 def _set_style_shading(style, fill_hex: str) -> None:
