@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Правила Markdown — mddocx</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --surface-2: #f4f4f5;
+      --fg: #0a0a0a;
+      --fg-muted: #71717a;
+      --border: #e4e4e7;
+      --border-strong: #a1a1aa;
+      --accent: #18181b;
+      --accent-fg: #fafafa;
+      --link: #1d4ed8;
+      --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0a0a;
+        --surface: #111113;
+        --surface-2: #18181b;
+        --fg: #fafafa;
+        --fg-muted: #a1a1aa;
+        --border: #27272a;
+        --border-strong: #52525b;
+        --accent: #fafafa;
+        --accent-fg: #0a0a0a;
+        --link: #93c5fd;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.62;
+      -webkit-font-smoothing: antialiased;
+      display: grid;
+      place-items: start center;
+      padding: 2rem 1.25rem 4rem;
+    }
+    main {
+      width: 100%;
+      max-width: 760px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .topbar h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .topbar a {
+      font-size: 0.85rem;
+      color: var(--fg-muted);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--border-strong);
+    }
+    .topbar a:hover { color: var(--fg); }
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .pills a {
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      text-decoration: none;
+      transition: background 100ms ease, border-color 100ms ease;
+    }
+    .pills a:hover {
+      background: var(--surface-2);
+      border-color: var(--border-strong);
+    }
+    .pills .pill-primary {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+    .pills .pill-primary:hover {
+      opacity: 0.88;
+    }
+    article {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem 2rem;
+    }
+    article :where(h1, h2, h3, h4) {
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+      margin: 1.8em 0 0.6em;
+    }
+    article > :first-child { margin-top: 0; }
+    article h1 { font-size: 1.45rem; }
+    article h2 {
+      font-size: 1.1rem;
+      padding-bottom: 0.35em;
+      border-bottom: 1px solid var(--border);
+    }
+    article h3 { font-size: 1rem; }
+    article h4 { font-size: 0.95rem; color: var(--fg-muted); }
+    article p, article ul, article ol { margin: 0.7em 0; }
+    article ul, article ol { padding-left: 1.4em; }
+    article li { margin: 0.25em 0; }
+    article a { color: var(--link); text-decoration: none; }
+    article a:hover { text-decoration: underline; }
+    article hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2em 0;
+    }
+    article blockquote {
+      margin: 0.9em 0;
+      padding: 0.1em 1em;
+      border-left: 3px solid var(--border-strong);
+      color: var(--fg-muted);
+      background: var(--surface-2);
+      border-radius: 0 6px 6px 0;
+    }
+    article code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.86em;
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      background: var(--surface-2);
+    }
+    article pre {
+      margin: 0.9em 0;
+      padding: 0.95rem 1.1rem;
+      background: var(--surface-2);
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+    article pre code {
+      padding: 0;
+      background: transparent;
+      font-size: inherit;
+    }
+    article table {
+      border-collapse: collapse;
+      margin: 0.9em 0;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+    article th, article td {
+      padding: 0.5em 0.75em;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    article th {
+      background: var(--surface-2);
+      font-weight: 600;
+    }
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+    }
+    footer a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--border-strong);
+    }
+    footer a:hover { color: var(--fg); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topbar">
+      <h1>Правила Markdown</h1>
+      <a href="/">← к конвертеру</a>
+    </div>
+
+    <div class="pills">
+      <a class="pill-primary" href="/template.zip">Скачать шаблон (.zip)</a>
+      <a href="/static/template/template.md">template.md</a>
+      <a href="/docs">Swagger</a>
+      <a href="/mcp/">MCP</a>
+    </div>
+
+    <article>
+<!--CONTENT-->
+    </article>
+
+    <footer>
+      Контракт оптимизирован для копирования в system-промпт LLM. Любой генератор,
+      который ему следует, даст детерминированный <code>.docx</code> через
+      <a href="/">/convert/md</a> или MCP-инструмент <code>convert_md</code>.
+    </footer>
+  </main>
+</body>
+</html>

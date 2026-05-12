@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>mddocx — DOCX в чистый markdown</title>
+  <title>mddocx — DOCX ↔ Markdown</title>
   <style>
     :root {
       --bg: #fafafa;
@@ -83,6 +83,33 @@
       color: var(--fg-muted);
       margin: 0 0 0.6rem 0.2rem;
     }
+    .seg {
+      display: inline-flex;
+      padding: 3px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 1rem;
+    }
+    .seg button {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.4rem 0.95rem;
+      border-radius: 7px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--fg-muted);
+      border: 1px solid transparent;
+      transition: background 100ms ease, color 100ms ease;
+    }
+    .seg button[aria-pressed="true"] {
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+    .seg button:hover:not([aria-pressed="true"]) {
+      color: var(--fg);
+    }
     .drop {
       display: block;
       border: 1.5px dashed var(--border);
@@ -111,6 +138,12 @@
       color: var(--fg-muted);
       margin-top: 0.35rem;
     }
+    .drop-hint a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--border-strong);
+    }
+    .drop-hint a:hover { color: var(--fg); }
     .file-info {
       margin-top: 1rem;
       padding: 0.9rem 1.1rem;
@@ -259,12 +292,17 @@
   <main>
     <header>
       <h1>mddocx</h1>
-      <p class="subtitle">DOCX → markdown, картинки, inline-комментарии</p>
+      <p class="subtitle">Двусторонний мост: DOCX ↔ Markdown</p>
     </header>
 
     <div class="split">
       <section class="column">
         <p class="section-label">Конвертация</p>
+
+        <div class="seg" role="group" aria-label="Направление конвертации">
+          <button id="mode-docx2md" type="button" aria-pressed="true">DOCX → MD</button>
+          <button id="mode-md2docx" type="button" aria-pressed="false">MD → DOCX</button>
+        </div>
 
         <label class="drop" id="drop">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -272,10 +310,9 @@
             <path d="m7 9 5-5 5 5" />
             <path d="M5 20h14" />
           </svg>
-          <div class="drop-text">Перетащите <code>.docx</code> или нажмите для выбора</div>
-          <div class="drop-hint">до 50 МБ · только Word DOCX</div>
-          <input type="file" id="file"
-                 accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          <div class="drop-text" id="drop-text">Перетащите <code>.docx</code> или нажмите для выбора</div>
+          <div class="drop-hint" id="drop-hint">до 50 МБ · только Word DOCX</div>
+          <input type="file" id="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
         </label>
 
         <div class="file-info" id="info">
@@ -303,14 +340,19 @@
           <div class="mcp-foot">
             Cursor: <code>~/.cursor/mcp.json</code><br />
             Claude Desktop: <code>~/.config/Claude/claude_desktop_config.json</code><br />
-            После сохранения — перезапустить клиент.
+            После сохранения — перезапустить клиент. Доступны два инструмента:
+            <code>convert_docx</code> и <code>convert_md</code>.
           </div>
         </div>
       </section>
     </div>
 
     <footer>
-      <a href="/docs">API · Swagger</a>
+      <a href="/rules">Правила MD</a>
+      &nbsp;·&nbsp;
+      <a href="/template.zip">Шаблон</a>
+      &nbsp;·&nbsp;
+      <a href="/docs">Swagger</a>
       &nbsp;·&nbsp;
       <a href="/openapi.json">OpenAPI</a>
       &nbsp;·&nbsp;
@@ -322,6 +364,8 @@
     const $ = (id) => document.getElementById(id);
     const drop = $("drop");
     const fileInput = $("file");
+    const dropText = $("drop-text");
+    const dropHint = $("drop-hint");
     const info = $("info");
     const fname = $("fname");
     const fsize = $("fsize");
@@ -331,9 +375,49 @@
     const status = $("status");
     const mcpConfig = $("mcp-config");
     const copyBtn = $("copy");
+    const modeDocx2Md = $("mode-docx2md");
+    const modeMd2Docx = $("mode-md2docx");
 
     const MAX_BYTES = 50 * 1024 * 1024;
+
+    const MODES = {
+      docx2md: {
+        accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        endpoint: "/convert",
+        outExt: ".zip",
+        dropText: 'Перетащите <code>.docx</code> или нажмите для выбора',
+        dropHint: 'до 50 МБ · только Word DOCX',
+        validate: (f) => f.name.toLowerCase().endsWith(".docx")
+          ? null
+          : "Нужен файл .docx",
+      },
+      md2docx: {
+        accept: ".md,.markdown,.zip,text/markdown,application/zip",
+        endpoint: "/convert/md",
+        outExt: ".docx",
+        dropText: 'Перетащите <code>.md</code> или <code>.zip</code> с <code>md+media/</code>',
+        dropHint: 'до 50 МБ · правила оформления — <a href="/rules">/rules</a>',
+        validate: (f) => /\.(md|markdown|zip)$/i.test(f.name)
+          ? null
+          : "Нужен файл .md, .markdown или .zip",
+      },
+    };
+
+    let mode = "docx2md";
     let selected = null;
+
+    const applyMode = () => {
+      const m = MODES[mode];
+      fileInput.accept = m.accept;
+      dropText.innerHTML = m.dropText;
+      dropHint.innerHTML = m.dropHint;
+      modeDocx2Md.setAttribute("aria-pressed", String(mode === "docx2md"));
+      modeMd2Docx.setAttribute("aria-pressed", String(mode === "md2docx"));
+      reset();
+    };
+
+    modeDocx2Md.addEventListener("click", () => { mode = "docx2md"; applyMode(); });
+    modeMd2Docx.addEventListener("click", () => { mode = "md2docx"; applyMode(); });
 
     // ----- MCP config rendering ------------------------------------------------
     const renderMcpConfig = () => {
@@ -345,7 +429,6 @@
         },
       };
       const text = JSON.stringify(config, null, 2);
-      // Lightweight syntax highlighting for JSON string values only.
       const escaped = text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -387,9 +470,8 @@
 
     const setFile = (f) => {
       if (!f) return;
-      if (!f.name.toLowerCase().endsWith(".docx")) {
-        return setStatus("Нужен файл с расширением .docx", "error");
-      }
+      const err = MODES[mode].validate(f);
+      if (err) return setStatus(err, "error");
       if (f.size > MAX_BYTES) {
         return setStatus("Файл больше 50 МБ", "error");
       }
@@ -401,13 +483,13 @@
       setStatus("");
     };
 
-    const reset = () => {
+    function reset() {
       selected = null;
       fileInput.value = "";
       info.classList.remove("active");
       actions.classList.remove("active");
       setStatus("");
-    };
+    }
 
     fileInput.addEventListener("change", (e) => setFile(e.target.files[0]));
 
@@ -427,8 +509,11 @@
 
     resetBtn.addEventListener("click", reset);
 
+    const stripKnownExt = (name) => name.replace(/\.(docx|md|markdown|zip)$/i, "");
+
     convertBtn.addEventListener("click", async () => {
       if (!selected) return;
+      const m = MODES[mode];
       convertBtn.disabled = true;
       setStatus('<span class="spinner"></span>Конвертация…');
 
@@ -436,7 +521,7 @@
       fd.append("file", selected);
 
       try {
-        const res = await fetch("/convert", { method: "POST", body: fd });
+        const res = await fetch(m.endpoint, { method: "POST", body: fd });
         if (!res.ok) {
           let detail = `${res.status} ${res.statusText}`;
           try {
@@ -450,14 +535,14 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = selected.name.replace(/\.docx$/i, "") + ".zip";
+        a.download = stripKnownExt(selected.name) + m.outExt;
         document.body.appendChild(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        let msg = "Готово, архив скачан.";
-        if (stats) {
+        let msg = "Готово, файл скачан.";
+        if (stats && mode === "docx2md") {
           try {
             const s = JSON.parse(stats);
             if (s.comments_total) {
@@ -472,6 +557,8 @@
         convertBtn.disabled = false;
       }
     });
+
+    applyMode();
   </script>
 </body>
 </html>
