@@ -159,16 +159,24 @@ def parse_source_paragraphs(docx: Path) -> tuple[list[SourcePara], dict[str, str
 
 
 def run_pandoc(src: Path, out_dir: Path) -> None:
+    """Run pandoc with ``out_dir`` as cwd so image paths stay relative.
+
+    Pandoc creates a ``media/`` subdirectory inside the ``--extract-media``
+    target and bakes that path into the output. Passing ``.`` together with
+    ``cwd=out_dir`` makes pandoc write files into ``out_dir/media/<name>``
+    and references into ``report.md`` as ``media/<name>`` — relative paths
+    that survive zipping and unpacking on a different host.
+    """
     if shutil.which("pandoc") is None:
         raise RuntimeError("pandoc not found in PATH; install via your package manager")
     cmd = [
         "pandoc",
         str(src),
         "-t", "gfm",
-        "-o", str(out_dir / "report.md"),
-        f"--extract-media={out_dir}",
+        "-o", "report.md",
+        "--extract-media=.",
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=out_dir)
     if result.returncode != 0:
         raise RuntimeError(f"pandoc failed: {result.stderr.strip()}")
     if result.stderr.strip():

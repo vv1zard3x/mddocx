@@ -24,7 +24,7 @@ docker run --rm -p 8000:8000 mddocx-web
 1. DNS A-record `example.com` → IP сервера.
 2. В `docker-compose.yml` заменить `example.com` на свой домен (одна правка).
 3. Убедиться, что внешняя Docker-сеть существует:
-   `docker network ls | grep proxy`.
+  `docker network ls | grep proxy`.
 
 ```bash
 docker compose up -d --build
@@ -96,24 +96,11 @@ comments/cN.md       # отдельный md на каждый Word-коммен
 Быстрая проверка из терминала (raw JSON-RPC):
 
 ```bash
-curl -sS -X POST https://your.domain/mcp/ \
+curl -sS -X POST https://mddocx.vv1zard3x.ru/mcp/ \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 ```
-
-### Защита от DNS rebinding на MCP
-
-MCP SDK по умолчанию валидирует `Host` header — без явного allow-листа все
-запросы отклоняются с `Invalid Host header`. Это управляется двумя env:
-
-| ENV                       | Что делает                                                |
-|---------------------------|-----------------------------------------------------------|
-| `MDDOCX_ALLOWED_HOSTS`    | CSV `Host` header'ов, которые принимаются. Если пусто — защита выключена. |
-| `MDDOCX_ALLOWED_ORIGINS`  | CSV `Origin` header'ов (если клиент его шлёт).            |
-
-В `docker-compose.yml` обе переменные стоят на `example.com` — замени на
-свой домен при деплое. Для локального dev без TLS оставь их пустыми / удали.
 
 ## Локальная разработка без Docker
 
@@ -132,4 +119,5 @@ uv run uvicorn server:app --reload --port 8000
 - Ошибки парсинга pandoc → 500 с текстом ошибки в `detail`.
 - Временные файлы чистятся через `BackgroundTask` после отдачи ответа.
 - Один worker uvicorn по умолчанию. Под нагрузку: `uvicorn --workers N`
-  (CPU-bound через pandoc, ставить ~количество ядер).
+(CPU-bound через pandoc, ставить ~количество ядер).
+
