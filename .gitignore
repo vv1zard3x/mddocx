@@ -1,0 +1,28 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build / artifacts
+dist/
+build/
+*.egg-info/
+
+# Letsencrypt local data if compose is run from this dir
+letsencrypt/
+acme.json

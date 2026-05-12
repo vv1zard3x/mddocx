@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mddocx — DOCX в чистый markdown</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --fg: #0a0a0a;
+      --fg-muted: #71717a;
+      --border: #e4e4e7;
+      --border-strong: #a1a1aa;
+      --accent: #18181b;
+      --accent-fg: #fafafa;
+      --error: #b91c1c;
+      --success: #15803d;
+      --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0a0a;
+        --surface: #111113;
+        --fg: #fafafa;
+        --fg-muted: #a1a1aa;
+        --border: #27272a;
+        --border-strong: #52525b;
+        --accent: #fafafa;
+        --accent-fg: #0a0a0a;
+        --error: #f87171;
+        --success: #4ade80;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+    }
+    main {
+      width: 100%;
+      max-width: 560px;
+    }
+    header { margin-bottom: 2rem; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .subtitle {
+      color: var(--fg-muted);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+    .drop {
+      display: block;
+      border: 1.5px dashed var(--border);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .drop:hover, .drop.dragover {
+      border-color: var(--border-strong);
+      background: var(--bg);
+    }
+    .drop input { display: none; }
+    .icon {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 1rem;
+      color: var(--fg-muted);
+      display: block;
+    }
+    .drop-text { font-size: 0.95rem; }
+    .drop-hint {
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+      margin-top: 0.35rem;
+    }
+    .file-info {
+      margin-top: 1.25rem;
+      padding: 0.9rem 1.1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .file-info.active { display: flex; }
+    .file-name {
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+    .file-size {
+      color: var(--fg-muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .actions {
+      margin-top: 1rem;
+      gap: 0.5rem;
+      display: none;
+    }
+    .actions.active { display: flex; }
+    button {
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 100ms ease, background 100ms ease;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--fg);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface); }
+    .status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--fg-muted);
+      min-height: 1.5em;
+    }
+    .status.error { color: var(--error); }
+    .status.success { color: var(--success); }
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--fg);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: -2px;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+    }
+    footer a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--border-strong);
+    }
+    footer a:hover { color: var(--fg); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>mddocx</h1>
+      <p class="subtitle">DOCX → markdown, картинки, inline-комментарии</p>
+    </header>
+
+    <label class="drop" id="drop">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V4" />
+        <path d="m7 9 5-5 5 5" />
+        <path d="M5 20h14" />
+      </svg>
+      <div class="drop-text">Перетащите <code>.docx</code> или нажмите для выбора</div>
+      <div class="drop-hint">до 50 МБ · только Word DOCX</div>
+      <input type="file" id="file"
+             accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+    </label>
+
+    <div class="file-info" id="info">
+      <span class="file-name" id="fname"></span>
+      <span class="file-size" id="fsize"></span>
+    </div>
+
+    <div class="actions" id="actions">
+      <button class="btn-primary" id="convert" type="button">Конвертировать</button>
+      <button class="btn-ghost" id="reset" type="button">Сбросить</button>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <footer>
+      <a href="/docs">API · Swagger</a>
+      &nbsp;·&nbsp;
+      <a href="/openapi.json">OpenAPI</a>
+    </footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const drop = $("drop");
+    const fileInput = $("file");
+    const info = $("info");
+    const fname = $("fname");
+    const fsize = $("fsize");
+    const actions = $("actions");
+    const convertBtn = $("convert");
+    const resetBtn = $("reset");
+    const status = $("status");
+
+    const MAX_BYTES = 50 * 1024 * 1024;
+    let selected = null;
+
+    const fmtSize = (n) => {
+      if (n < 1024) return `${n} Б`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} КБ`;
+      return `${(n / 1024 / 1024).toFixed(1)} МБ`;
+    };
+
+    const setStatus = (text, kind = "") => {
+      status.className = "status" + (kind ? " " + kind : "");
+      status.innerHTML = text;
+    };
+
+    const setFile = (f) => {
+      if (!f) return;
+      if (!f.name.toLowerCase().endsWith(".docx")) {
+        return setStatus("Нужен файл с расширением .docx", "error");
+      }
+      if (f.size > MAX_BYTES) {
+        return setStatus("Файл больше 50 МБ", "error");
+      }
+      selected = f;
+      fname.textContent = f.name;
+      fsize.textContent = fmtSize(f.size);
+      info.classList.add("active");
+      actions.classList.add("active");
+      setStatus("");
+    };
+
+    const reset = () => {
+      selected = null;
+      fileInput.value = "";
+      info.classList.remove("active");
+      actions.classList.remove("active");
+      setStatus("");
+    };
+
+    fileInput.addEventListener("change", (e) => setFile(e.target.files[0]));
+
+    ["dragenter", "dragover"].forEach((ev) =>
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.add("dragover");
+      })
+    );
+    ["dragleave", "drop"].forEach((ev) =>
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.remove("dragover");
+      })
+    );
+    drop.addEventListener("drop", (e) => setFile(e.dataTransfer.files[0]));
+
+    resetBtn.addEventListener("click", reset);
+
+    convertBtn.addEventListener("click", async () => {
+      if (!selected) return;
+      convertBtn.disabled = true;
+      setStatus('<span class="spinner"></span>Конвертация…');
+
+      const fd = new FormData();
+      fd.append("file", selected);
+
+      try {
+        const res = await fetch("/convert", { method: "POST", body: fd });
+        if (!res.ok) {
+          let detail = `${res.status} ${res.statusText}`;
+          try {
+            const data = await res.json();
+            if (data && data.detail) detail = data.detail;
+          } catch {}
+          throw new Error(detail);
+        }
+        const stats = res.headers.get("X-Mddocx-Stats");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = selected.name.replace(/\.docx$/i, "") + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        let msg = "Готово, архив скачан.";
+        if (stats) {
+          try {
+            const s = JSON.parse(stats);
+            if (s.comments_total) {
+              msg += ` Комментариев: ${s.comments_inline}/${s.comments_total} inline.`;
+            }
+          } catch {}
+        }
+        setStatus(msg, "success");
+      } catch (err) {
+        setStatus("Ошибка: " + err.message, "error");
+      } finally {
+        convertBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

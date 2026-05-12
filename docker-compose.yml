@@ -1,0 +1,38 @@
+# mddocx-web routed via an existing Traefik instance running on the host.
+#
+# Assumes Traefik:
+#   - is already running on this host with Docker provider enabled,
+#   - exposes entrypoint `websecure` (HTTPS) and a cert resolver named `le`,
+#   - is attached to an external Docker network (named `traefik` below —
+#     change to whatever your Traefik uses).
+#
+# Before first run:
+#   1. Point an A-record from example.com to this host.
+#   2. Replace `example.com` below.
+#   3. Adjust the external network name if your Traefik uses a different one.
+#   4. Adjust `traefik.http.routers.mddocx.tls.certresolver=<name>` to match
+#      the cert resolver name configured in your Traefik.
+#
+#   docker compose up -d --build
+
+services:
+  mddocx:
+    build: .
+    image: mddocx-web:latest
+    restart: unless-stopped
+    expose:
+      - "8000"
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.mddocx.rule=Host(`example.com`)
+      - traefik.http.routers.mddocx.entrypoints=websecure
+      - traefik.http.routers.mddocx.tls=true
+      - traefik.http.routers.mddocx.tls.certresolver=le
+      - traefik.http.services.mddocx.loadbalancer.server.port=8000
+
+networks:
+  traefik:
+    external: true
