@@ -15,7 +15,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
-COPY mddocx.py server.py MARKDOWN_RULES.md ./
+COPY mddocx.py server.py MARKDOWN_RULES.md GOST_RULES.md ./
 COPY docxmd/ ./docxmd/
 COPY static/ ./static/
 

@@ -47,6 +47,7 @@ MAX_BYTES = 50 * 1024 * 1024  # 50 MB
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
 RULES_MD_PATH = BASE_DIR / "MARKDOWN_RULES.md"
+GOST_RULES_MD_PATH = BASE_DIR / "GOST_RULES.md"
 
 
 # ---------------------------------------------------------------------------
@@ -382,10 +383,12 @@ _RULES_PARSER = (
 
 @app.get("/rules", include_in_schema=False, response_class=HTMLResponse)
 def rules() -> HTMLResponse:
-    md_text = RULES_MD_PATH.read_text(encoding="utf-8")
-    body_html = _RULES_PARSER.render(md_text)
+    gost_html = _RULES_PARSER.render(GOST_RULES_MD_PATH.read_text(encoding="utf-8"))
+    md_html = _RULES_PARSER.render(RULES_MD_PATH.read_text(encoding="utf-8"))
     layout = (STATIC_DIR / "rules.html").read_text(encoding="utf-8")
-    return HTMLResponse(layout.replace("<!--CONTENT-->", body_html))
+    return HTMLResponse(
+        layout.replace("<!--GOST-->", gost_html).replace("<!--MARKDOWN-->", md_html)
+    )
 
 
 @app.get(

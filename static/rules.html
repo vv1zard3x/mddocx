@@ -95,9 +95,18 @@
       color: var(--accent-fg);
       border-color: var(--accent);
     }
-    .pills .pill-primary:hover {
-      opacity: 0.88;
+    .pills .pill-primary:hover { opacity: 0.88; }
+
+    .section-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--fg-muted);
+      margin: 0 0 0.6rem;
+      font-weight: 600;
     }
+    .section + .section { margin-top: 2.25rem; }
+
     article {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -174,8 +183,66 @@
       background: var(--surface-2);
       font-weight: 600;
     }
+
+    .llm-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    @media (min-width: 620px) {
+      .llm-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .llm-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .llm-card h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .llm-card p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+    .llm-card .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: auto;
+    }
+    .llm-card .actions a {
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      text-decoration: none;
+      transition: background 100ms ease, border-color 100ms ease;
+    }
+    .llm-card .actions a:hover {
+      background: var(--surface-2);
+      border-color: var(--border-strong);
+    }
+    .llm-card .actions .primary {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+    .llm-card .actions .primary:hover { opacity: 0.88; }
+
     footer {
-      margin-top: 2rem;
+      margin-top: 2.5rem;
       text-align: center;
       font-size: 0.8rem;
       color: var(--fg-muted);
@@ -197,18 +264,54 @@
 
     <div class="pills">
       <a class="pill-primary" href="/template.zip">Скачать шаблон (.zip)</a>
-      <a href="/static/template/template.md">template.md</a>
-      <a href="/docs">Swagger</a>
-      <a href="/mcp/">MCP</a>
     </div>
 
-    <article>
-<!--CONTENT-->
-    </article>
+    <section class="section">
+      <p class="section-label">Что применяет конвертер</p>
+      <article>
+<!--GOST-->
+      </article>
+    </section>
+
+    <section class="section">
+      <p class="section-label">Как писать Markdown вручную</p>
+      <article>
+<!--MARKDOWN-->
+      </article>
+    </section>
+
+    <section class="section">
+      <p class="section-label">Правила для LLM</p>
+      <div class="llm-grid">
+        <div class="llm-card">
+          <h3>Markdown contract</h3>
+          <p>
+            Структура markdown, при которой <code>docxmd</code> даёт детерминированный <code>.docx</code>.
+            Загружай как rule в Cursor (<code>.cursor/rules/</code>) или в Claude
+            (Project Knowledge / Custom Instructions / <code>CLAUDE.md</code>).
+          </p>
+          <div class="actions">
+            <a class="primary" href="/static/rules/cursor/docxmd-markdown.mdc" download>Cursor (.mdc)</a>
+            <a href="/static/rules/claude/docxmd-markdown.md" download>Claude (.md)</a>
+          </div>
+        </div>
+        <div class="llm-card">
+          <h3>Prose style</h3>
+          <p>
+            Стилевые правила для длинных текстов: пунктуация, словарь по умолчанию,
+            ритм предложений, конструкции, от которых стоит уходить.
+          </p>
+          <div class="actions">
+            <a class="primary" href="/static/rules/cursor/prose-style.mdc" download>Cursor (.mdc)</a>
+            <a href="/static/rules/claude/prose-style.md" download>Claude (.md)</a>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <footer>
       Контракт оптимизирован для копирования в system-промпт LLM. Любой генератор,
-      который ему следует, даст детерминированный <code>.docx</code> через
+      который ему следует, даёт детерминированный <code>.docx</code> через
       <a href="/">/convert/md</a> или MCP-инструмент <code>convert_md</code>.
     </footer>
   </main>
