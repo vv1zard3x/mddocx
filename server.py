@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import ipaddress
 import json
+import os
 import shutil
 import socket
 import tempfile
@@ -28,6 +29,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.background import BackgroundTask
 
 from mddocx import convert, parse_comments, parse_source_paragraphs
@@ -39,6 +41,27 @@ STATIC_DIR = Path(__file__).parent / "static"
 # MCP server (set up before FastAPI so it can be mounted with proper lifespan)
 # ---------------------------------------------------------------------------
 
+def _csv_env(name: str) -> list[str]:
+    raw = os.getenv(name, "")
+    return [v.strip() for v in raw.split(",") if v.strip()]
+
+
+_allowed_hosts = _csv_env("MDDOCX_ALLOWED_HOSTS")
+_allowed_origins = _csv_env("MDDOCX_ALLOWED_ORIGINS")
+
+# DNS-rebinding protection is opt-in: enable only when the operator supplies an
+# explicit host list (typically set in docker-compose env to match the public
+# domain). Out of the box, local `uvicorn server:app` works on any Host header.
+if _allowed_hosts:
+    _security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=_allowed_hosts,
+        allowed_origins=_allowed_origins,
+    )
+else:
+    _security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+
 mcp_server = FastMCP(
     "mddocx",
     streamable_http_path="/",  # mount at FastAPI's /mcp prefix
@@ -48,6 +71,7 @@ mcp_server = FastMCP(
         "bytes and returns the rendered markdown, structured comments, and "
         "conversion stats."
     ),
+    transport_security=_security,
 )
 
 

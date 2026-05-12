@@ -96,11 +96,24 @@ comments/cN.md       # отдельный md на каждый Word-коммен
 Быстрая проверка из терминала (raw JSON-RPC):
 
 ```bash
-curl -sS -X POST https://mddocx.vv1zard3x.ru/mcp/ \
+curl -sS -X POST https://your.domain/mcp/ \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 ```
+
+### Защита от DNS rebinding на MCP
+
+MCP SDK по умолчанию валидирует `Host` header — без явного allow-листа все
+запросы отклоняются с `Invalid Host header`. Это управляется двумя env:
+
+| ENV                       | Что делает                                                |
+|---------------------------|-----------------------------------------------------------|
+| `MDDOCX_ALLOWED_HOSTS`    | CSV `Host` header'ов, которые принимаются. Если пусто — защита выключена. |
+| `MDDOCX_ALLOWED_ORIGINS`  | CSV `Origin` header'ов (если клиент его шлёт).            |
+
+В `docker-compose.yml` обе переменные стоят на `example.com` — замени на
+свой домен при деплое. Для локального dev без TLS оставь их пустыми / удали.
 
 ## Локальная разработка без Docker
 

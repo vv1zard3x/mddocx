@@ -20,6 +20,13 @@ services:
     restart: unless-stopped
     expose:
       - "8000"
+    environment:
+      # Comma-separated list of Host header values accepted by the MCP
+      # endpoint (DNS-rebinding protection). Use the same domain you set in
+      # the Traefik Host(...) rule below. Leave unset to disable the check
+      # (e.g. for local development).
+      MDDOCX_ALLOWED_HOSTS: example.com
+      MDDOCX_ALLOWED_ORIGINS: https://example.com
     networks:
       - proxy
     labels:
