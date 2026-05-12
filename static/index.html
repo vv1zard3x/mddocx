@@ -8,6 +8,7 @@
     :root {
       --bg: #fafafa;
       --surface: #ffffff;
+      --surface-2: #f4f4f5;
       --fg: #0a0a0a;
       --fg-muted: #71717a;
       --border: #e4e4e7;
@@ -16,12 +17,14 @@
       --accent-fg: #fafafa;
       --error: #b91c1c;
       --success: #15803d;
+      --string: #15803d;
       --radius: 12px;
     }
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #0a0a0a;
         --surface: #111113;
+        --surface-2: #18181b;
         --fg: #fafafa;
         --fg-muted: #a1a1aa;
         --border: #27272a;
@@ -30,6 +33,7 @@
         --accent-fg: #0a0a0a;
         --error: #f87171;
         --success: #4ade80;
+        --string: #86efac;
       }
     }
     * { box-sizing: border-box; }
@@ -47,7 +51,7 @@
     }
     main {
       width: 100%;
-      max-width: 560px;
+      max-width: 980px;
     }
     header { margin-bottom: 2rem; }
     h1 {
@@ -61,12 +65,30 @@
       font-size: 0.95rem;
       margin: 0;
     }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (min-width: 820px) {
+      .split { grid-template-columns: 1fr 1fr; }
+    }
+    .column { min-width: 0; }
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      margin: 0 0 0.6rem 0.2rem;
+    }
     .drop {
       display: block;
       border: 1.5px dashed var(--border);
       background: var(--surface);
       border-radius: var(--radius);
-      padding: 3rem 1.5rem;
+      padding: 2.5rem 1.5rem;
       text-align: center;
       cursor: pointer;
       transition: border-color 120ms ease, background 120ms ease;
@@ -90,7 +112,7 @@
       margin-top: 0.35rem;
     }
     .file-info {
-      margin-top: 1.25rem;
+      margin-top: 1rem;
       padding: 0.9rem 1.1rem;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -102,17 +124,10 @@
       gap: 1rem;
     }
     .file-info.active { display: flex; }
-    .file-name {
-      word-break: break-all;
-      overflow-wrap: anywhere;
-    }
-    .file-size {
-      color: var(--fg-muted);
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
+    .file-name { word-break: break-all; overflow-wrap: anywhere; }
+    .file-size { color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .actions {
-      margin-top: 1rem;
+      margin-top: 0.75rem;
       gap: 0.5rem;
       display: none;
     }
@@ -121,16 +136,13 @@
       font: inherit;
       font-size: 0.9rem;
       font-weight: 500;
-      padding: 0.6rem 1.25rem;
+      padding: 0.55rem 1.15rem;
       border-radius: 8px;
       cursor: pointer;
-      transition: opacity 100ms ease, background 100ms ease;
+      transition: opacity 100ms ease, background 100ms ease, color 100ms ease;
       border: 1px solid transparent;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: var(--accent-fg);
-    }
+    .btn-primary { background: var(--accent); color: var(--accent-fg); }
     .btn-primary:hover:not(:disabled) { opacity: 0.88; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-ghost {
@@ -140,7 +152,7 @@
     }
     .btn-ghost:hover { background: var(--surface); }
     .status {
-      margin-top: 1rem;
+      margin-top: 0.75rem;
       font-size: 0.9rem;
       color: var(--fg-muted);
       min-height: 1.5em;
@@ -149,8 +161,7 @@
     .status.success { color: var(--success); }
     .spinner {
       display: inline-block;
-      width: 12px;
-      height: 12px;
+      width: 12px; height: 12px;
       border: 2px solid var(--border);
       border-top-color: var(--fg);
       border-radius: 50%;
@@ -159,6 +170,77 @@
       margin-right: 0.5rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .mcp-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .mcp-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .mcp-title {
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    .mcp-title small {
+      color: var(--fg-muted);
+      font-weight: 400;
+      margin-left: 0.5rem;
+    }
+    .copy-btn {
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--fg-muted);
+      border: 1px solid var(--border);
+      transition: color 100ms ease, border-color 100ms ease, background 100ms ease;
+    }
+    .copy-btn:hover {
+      color: var(--fg);
+      border-color: var(--border-strong);
+      background: var(--surface-2);
+    }
+    .copy-btn.copied { color: var(--success); border-color: var(--success); }
+    pre {
+      margin: 0;
+      padding: 1rem 1.1rem;
+      background: var(--surface-2);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      color: var(--fg);
+      tab-size: 2;
+    }
+    pre .s { color: var(--string); }
+    .mcp-foot {
+      padding: 0.7rem 1.1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+    .mcp-foot code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      color: var(--fg);
+      background: var(--surface-2);
+      padding: 0.05rem 0.35rem;
+      border-radius: 4px;
+    }
+
     footer {
       margin-top: 2rem;
       text-align: center;
@@ -180,34 +262,59 @@
       <p class="subtitle">DOCX → markdown, картинки, inline-комментарии</p>
     </header>
 
-    <label class="drop" id="drop">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 16V4" />
-        <path d="m7 9 5-5 5 5" />
-        <path d="M5 20h14" />
-      </svg>
-      <div class="drop-text">Перетащите <code>.docx</code> или нажмите для выбора</div>
-      <div class="drop-hint">до 50 МБ · только Word DOCX</div>
-      <input type="file" id="file"
-             accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-    </label>
+    <div class="split">
+      <section class="column">
+        <p class="section-label">Конвертация</p>
 
-    <div class="file-info" id="info">
-      <span class="file-name" id="fname"></span>
-      <span class="file-size" id="fsize"></span>
+        <label class="drop" id="drop">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4" />
+            <path d="m7 9 5-5 5 5" />
+            <path d="M5 20h14" />
+          </svg>
+          <div class="drop-text">Перетащите <code>.docx</code> или нажмите для выбора</div>
+          <div class="drop-hint">до 50 МБ · только Word DOCX</div>
+          <input type="file" id="file"
+                 accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        </label>
+
+        <div class="file-info" id="info">
+          <span class="file-name" id="fname"></span>
+          <span class="file-size" id="fsize"></span>
+        </div>
+
+        <div class="actions" id="actions">
+          <button class="btn-primary" id="convert" type="button">Конвертировать</button>
+          <button class="btn-ghost" id="reset" type="button">Сбросить</button>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="column">
+        <p class="section-label">Подключить как MCP</p>
+
+        <div class="mcp-card">
+          <div class="mcp-head">
+            <span class="mcp-title">mcp.json <small>Cursor / Claude Desktop</small></span>
+            <button class="copy-btn" id="copy" type="button" aria-label="Копировать">Копировать</button>
+          </div>
+          <pre id="mcp-config"></pre>
+          <div class="mcp-foot">
+            Cursor: <code>~/.cursor/mcp.json</code><br />
+            Claude Desktop: <code>~/.config/Claude/claude_desktop_config.json</code><br />
+            После сохранения — перезапустить клиент.
+          </div>
+        </div>
+      </section>
     </div>
-
-    <div class="actions" id="actions">
-      <button class="btn-primary" id="convert" type="button">Конвертировать</button>
-      <button class="btn-ghost" id="reset" type="button">Сбросить</button>
-    </div>
-
-    <div class="status" id="status" role="status" aria-live="polite"></div>
 
     <footer>
       <a href="/docs">API · Swagger</a>
       &nbsp;·&nbsp;
       <a href="/openapi.json">OpenAPI</a>
+      &nbsp;·&nbsp;
+      <a href="/mcp/">MCP</a>
     </footer>
   </main>
 
@@ -222,10 +329,51 @@
     const convertBtn = $("convert");
     const resetBtn = $("reset");
     const status = $("status");
+    const mcpConfig = $("mcp-config");
+    const copyBtn = $("copy");
 
     const MAX_BYTES = 50 * 1024 * 1024;
     let selected = null;
 
+    // ----- MCP config rendering ------------------------------------------------
+    const renderMcpConfig = () => {
+      const config = {
+        mcpServers: {
+          mddocx: {
+            url: `${window.location.origin}/mcp/`,
+          },
+        },
+      };
+      const text = JSON.stringify(config, null, 2);
+      // Lightweight syntax highlighting for JSON string values only.
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      mcpConfig.innerHTML = escaped.replace(
+        /(:\s*)("(?:\\.|[^"\\])*")/g,
+        (_, sep, str) => `${sep}<span class="s">${str}</span>`
+      );
+      mcpConfig.dataset.raw = text;
+    };
+    renderMcpConfig();
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(mcpConfig.dataset.raw);
+        copyBtn.textContent = "Скопировано";
+        copyBtn.classList.add("copied");
+        setTimeout(() => {
+          copyBtn.textContent = "Копировать";
+          copyBtn.classList.remove("copied");
+        }, 1600);
+      } catch {
+        copyBtn.textContent = "Не удалось";
+        setTimeout(() => (copyBtn.textContent = "Копировать"), 1600);
+      }
+    });
+
+    // ----- Conversion ---------------------------------------------------------
     const fmtSize = (n) => {
       if (n < 1024) return `${n} Б`;
       if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} КБ`;
