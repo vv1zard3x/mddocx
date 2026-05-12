@@ -54,6 +54,54 @@ comments/cN.md       # отдельный md на каждый Word-коммен
 `media_output`) — пригодно для проверки качества конвертации без распаковки
 архива.
 
+## MCP (Cursor / Claude Desktop)
+
+Сервис экспонирует MCP streamable-HTTP endpoint на `/mcp/`. Один инструмент
+`convert_docx(source)` — принимает HTTPS URL на `.docx` (только публичные
+адреса, без localhost/private) **или** base64-закодированные байты docx, до
+50 МБ. Возвращает структурированный JSON: `report_md`, `comments[]`
+(`{id, author, body, range}`), `stats`, `media[]`.
+
+**Cursor** (`~/.cursor/mcp.json` для глобального или `.cursor/mcp.json` в
+корне проекта):
+
+```json
+{
+  "mcpServers": {
+    "mddocx": {
+      "url": "https://mddocx.vv1zard3x.ru/mcp/"
+    }
+  }
+}
+```
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`
+на macOS, аналог на других ОС):
+
+```json
+{
+  "mcpServers": {
+    "mddocx": {
+      "type": "http",
+      "url": "https://mddocx.vv1zard3x.ru/mcp/"
+    }
+  }
+}
+```
+
+После перезапуска клиента инструмент `convert_docx` появится в списке
+доступных. URL обязательно **со слешем** в конце — без него FastAPI отдаст
+307-редирект, который не все MCP-клиенты корректно обрабатывают на POST.
+
+Быстрая проверка из терминала (raw JSON-RPC):
+
+```bash
+curl -sS -X POST https://mddocx.vv1zard3x.ru/mcp/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+```
+
 ## Локальная разработка без Docker
 
 Системная зависимость: `pandoc`.
